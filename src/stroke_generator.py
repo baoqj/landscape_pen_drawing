@@ -36,22 +36,30 @@ def edges_to_strokes(edges: np.ndarray, regions: RegionMap, strategy: DrawingStr
         if approx.shape[0] < 2:
             continue
         points = [(float(x), float(y)) for x, y in approx]
+        line_type = "straight"
+        stylized_segments = [points]
+        if semantic != "building":
+            line_type = str(strategy.global_strategy.get("entourage_line_type", "loose_curve"))
+            stylized_segments = _stylize_polyline(points, line_type, style.jitter_px * 0.45, _stable_hash(cx, cy, length))
         width = style.line_width * (1.15 if is_subject else 0.92)
         width_variation = float(strategy.global_strategy.get("width_variation", 0.0))
         if width_variation > 0:
             width *= 1.0 + ((_stable_hash(cx, cy, length) % 100) / 100.0 - 0.5) * width_variation
-        stroke = Stroke(
-            id="",
-            layer="layer_01_main_contours" if is_subject or semantic in {"building", "person"} else "layer_02_secondary_edges",
-            semantic_region=semantic,
-            stroke_type="contour" if is_subject else "edge",
-            points=points,
-            width=max(0.1, width),
-            opacity=style.opacity,
-            priority=1 if is_subject else 2,
-            drawing_order=0,
-        )
-        strokes.append(add_hand_drawn_jitter(stroke, style.jitter_px if semantic != "building" else min(style.jitter_px, 0.25)))
+        for segment_points in stylized_segments:
+            if len(segment_points) < 2 or _polyline_length(segment_points) < 4:
+                continue
+            stroke = Stroke(
+                id="",
+                layer="layer_01_main_contours" if is_subject or semantic in {"building", "person"} else "layer_02_secondary_edges",
+                semantic_region=semantic,
+                stroke_type=("contour" if is_subject else "edge") + ("" if line_type == "straight" else f"_{line_type}"),
+                points=segment_points,
+                width=max(0.1, width),
+                opacity=style.opacity,
+                priority=1 if is_subject else 2,
+                drawing_order=0,
+            )
+            strokes.append(add_hand_drawn_jitter(stroke, style.jitter_px if semantic != "building" else min(style.jitter_px, 0.25)))
     return strokes
 
 
@@ -156,6 +164,10 @@ def generate_building_structure_strokes(image: np.ndarray, building_mask: np.nda
     line_width = float(architectural_style.get("structure_line_width", 1.05))
     opacity = float(architectural_style.get("structure_line_opacity", 0.86))
     max_lines = int(architectural_style.get("max_structure_lines", 320))
+    structure_line_type = str(architectural_style.get("structure_line_type", "straight"))
+    curve_px = float(architectural_style.get("line_curvature_px", 3.0))
+    wobble_px = float(architectural_style.get("sketch_wobble_px", 1.0))
+    gap_ratio = float(architectural_style.get("broken_gap_ratio", 0.22))
     kept: list[tuple[int, int, int, int]] = []
     if lines is not None:
         sorted_lines = sorted(lines[:, 0, :], key=lambda ln: math.hypot(ln[2] - ln[0], ln[3] - ln[1]), reverse=True)
@@ -172,19 +184,27 @@ def generate_building_structure_strokes(image: np.ndarray, building_mask: np.nda
                 continue
             kept.append((x1, y1, x2, y2))
             extended = _extend_segment((x1, y1), (x2, y2), line_extend if rectilinear else line_extend * 0.55, w, h)
-            strokes.append(
-                Stroke(
-                    id="",
-                    layer="layer_01_main_contours",
-                    semantic_region="building",
-                    stroke_type="structure_line_extended" if rectilinear else "structure_line",
-                    points=extended,
-                    width=line_width * (1.06 if rectilinear else 0.86),
-                    opacity=opacity,
-                    priority=1,
-                    drawing_order=0,
-                )
+            styled_segments = _stylize_polyline(
+                extended,
+                structure_line_type,
+                curve_px if "curve" in structure_line_type else wobble_px,
+                _stable_hash(x1, y1, x2, y2),
+                gap_ratio=gap_ratio,
             )
+            for styled in styled_segments:
+                strokes.append(
+                    Stroke(
+                        id="",
+                        layer="layer_01_main_contours",
+                        semantic_region="building",
+                        stroke_type=("structure_line_extended" if rectilinear else "structure_line") + f"_{structure_line_type}",
+                        points=styled,
+                        width=line_width * (1.06 if rectilinear else 0.86),
+                        opacity=opacity,
+                        priority=1,
+                        drawing_order=0,
+                    )
+                )
             if len(strokes) >= max_lines:
                 break
     if bool(architectural_style.get("draw_mass_boxes", True)):
@@ -208,6 +228,10 @@ def generate_architectural_plane_hatching(
     angle = math.radians(float(architectural_style.get("facade_hatch_angle_deg", 45.0)))
     opacity = float(architectural_style.get("facade_hatch_opacity", 0.36))
     max_lines = int(architectural_style.get("max_facade_hatch_lines", 800))
+    hatch_line_type = str(architectural_style.get("facade_hatch_line_type", "straight"))
+    curve_px = float(architectural_style.get("line_curvature_px", 3.0))
+    wobble_px = float(architectural_style.get("sketch_wobble_px", 1.0))
+    gap_ratio = float(architectural_style.get("broken_gap_ratio", 0.22))
 
     d = np.array([math.cos(angle), math.sin(angle)], dtype=np.float32)
     n = np.array([-math.sin(angle), math.cos(angle)], dtype=np.float32)
@@ -228,19 +252,27 @@ def generate_architectural_plane_hatching(
             segment_darkness = _segment_darkness(segment, darkness)
             if segment_darkness < 0.16:
                 continue
-            strokes.append(
-                Stroke(
-                    id="",
-                    layer="layer_03_hatching",
-                    semantic_region="building",
-                    stroke_type="facade_plane_hatch",
-                    points=segment,
-                    width=0.58,
-                    opacity=min(0.72, opacity * (0.55 + segment_darkness)),
-                    priority=3,
-                    drawing_order=0,
-                )
+            styled_segments = _stylize_polyline(
+                segment,
+                hatch_line_type,
+                curve_px if "curve" in hatch_line_type else wobble_px,
+                _stable_hash(segment[0][0], segment[0][1], segment[-1][0], segment[-1][1]),
+                gap_ratio=gap_ratio,
             )
+            for styled in styled_segments:
+                strokes.append(
+                    Stroke(
+                        id="",
+                        layer="layer_03_hatching",
+                        semantic_region="building",
+                        stroke_type=f"facade_plane_hatch_{hatch_line_type}",
+                        points=styled,
+                        width=0.58,
+                        opacity=min(0.72, opacity * (0.55 + segment_darkness)),
+                        priority=3,
+                        drawing_order=0,
+                    )
+                )
             if len(strokes) >= max_lines:
                 return strokes
     return strokes
@@ -347,6 +379,10 @@ def _generate_building_mass_box_strokes(mask: np.ndarray, architectural_style: d
     tick = float(architectural_style.get("corner_tick_px", 8.0))
     opacity = float(architectural_style.get("structure_line_opacity", 0.86)) * 0.72
     line_width = float(architectural_style.get("structure_line_width", 1.05)) * 0.86
+    structure_line_type = str(architectural_style.get("structure_line_type", "straight"))
+    curve_px = float(architectural_style.get("line_curvature_px", 3.0))
+    wobble_px = float(architectural_style.get("sketch_wobble_px", 1.0))
+    gap_ratio = float(architectural_style.get("broken_gap_ratio", 0.22))
     strokes: list[Stroke] = []
     for idx in components:
         x, y, ww, hh, area = stats[idx]
@@ -360,19 +396,28 @@ def _generate_building_mass_box_strokes(mask: np.ndarray, architectural_style: d
             ((left, bottom), (left, top)),
         ]
         for p1, p2 in box_lines:
-            strokes.append(
-                Stroke(
-                    id="",
-                    layer="layer_01_main_contours",
-                    semantic_region="building",
-                    stroke_type="mass_edge_extension",
-                    points=_extend_segment(p1, p2, extend * 0.45, w, h),
-                    width=line_width,
-                    opacity=opacity,
-                    priority=1,
-                    drawing_order=0,
-                )
+            line_points = _extend_segment(p1, p2, extend * 0.45, w, h)
+            styled_segments = _stylize_polyline(
+                line_points,
+                structure_line_type,
+                curve_px if "curve" in structure_line_type else wobble_px,
+                _stable_hash(p1[0], p1[1], p2[0], p2[1]),
+                gap_ratio=gap_ratio,
             )
+            for styled in styled_segments:
+                strokes.append(
+                    Stroke(
+                        id="",
+                        layer="layer_01_main_contours",
+                        semantic_region="building",
+                        stroke_type=f"mass_edge_extension_{structure_line_type}",
+                        points=styled,
+                        width=line_width,
+                        opacity=opacity,
+                        priority=1,
+                        drawing_order=0,
+                    )
+                )
         if bool(architectural_style.get("draw_corner_extensions", True)):
             corners = [(left, top), (right, top), (right, bottom), (left, bottom)]
             for cx, cy in corners:
@@ -418,6 +463,88 @@ def _segment_darkness(segment: list[tuple[float, float]], darkness: np.ndarray) 
     xs = np.clip(np.rint(np.linspace(x1, x2, n)).astype(int), 0, w - 1)
     ys = np.clip(np.rint(np.linspace(y1, y2, n)).astype(int), 0, h - 1)
     return float(np.mean(darkness[ys, xs]))
+
+
+def _stylize_polyline(
+    points: list[tuple[float, float]],
+    line_type: str,
+    amount: float,
+    seed: int,
+    gap_ratio: float = 0.22,
+) -> list[list[tuple[float, float]]]:
+    if len(points) < 2:
+        return [points]
+    normalized = line_type.lower().strip()
+    if normalized == "straight":
+        return [points]
+    if normalized in {"slight_curve", "curve", "curved", "loose_curve"}:
+        strength = amount * (1.45 if normalized == "loose_curve" else 1.0)
+        return [_curve_polyline(points, strength, seed)]
+    if normalized == "sketch":
+        return [_sketch_polyline(points, amount, seed)]
+    if normalized == "broken":
+        return _break_polyline(points, gap_ratio)
+    if normalized == "broken_curve":
+        curved = _curve_polyline(points, amount, seed)
+        return _break_polyline(curved, gap_ratio)
+    return [points]
+
+
+def _curve_polyline(points: list[tuple[float, float]], amount: float, seed: int) -> list[tuple[float, float]]:
+    if len(points) < 2 or amount <= 0:
+        return points
+    rng = np.random.default_rng(seed)
+    curved: list[tuple[float, float]] = [points[0]]
+    for idx, (p1, p2) in enumerate(zip(points, points[1:])):
+        x1, y1 = p1
+        x2, y2 = p2
+        length = math.hypot(x2 - x1, y2 - y1)
+        if length < 4:
+            curved.append(p2)
+            continue
+        nx, ny = -(y2 - y1) / length, (x2 - x1) / length
+        bow = float(rng.normal(0, amount)) * (0.55 + min(length / 80.0, 1.2))
+        mx = (x1 + x2) * 0.5 + nx * bow
+        my = (y1 + y2) * 0.5 + ny * bow
+        curved.append((float(mx), float(my)))
+        curved.append(p2)
+    return curved
+
+
+def _sketch_polyline(points: list[tuple[float, float]], amount: float, seed: int) -> list[tuple[float, float]]:
+    if len(points) < 2 or amount <= 0:
+        return points
+    rng = np.random.default_rng(seed)
+    out: list[tuple[float, float]] = [points[0]]
+    for p1, p2 in zip(points, points[1:]):
+        x1, y1 = p1
+        x2, y2 = p2
+        length = math.hypot(x2 - x1, y2 - y1)
+        steps = max(2, min(9, int(length // 18) + 2))
+        for step in range(1, steps + 1):
+            t = step / steps
+            x = x1 + (x2 - x1) * t + rng.normal(0, amount)
+            y = y1 + (y2 - y1) * t + rng.normal(0, amount)
+            out.append((float(x), float(y)))
+    return out
+
+
+def _break_polyline(points: list[tuple[float, float]], gap_ratio: float) -> list[list[tuple[float, float]]]:
+    if len(points) < 2:
+        return [points]
+    ratio = float(np.clip(gap_ratio, 0.05, 0.65))
+    segments: list[list[tuple[float, float]]] = []
+    for p1, p2 in zip(points, points[1:]):
+        x1, y1 = p1
+        x2, y2 = p2
+        length = math.hypot(x2 - x1, y2 - y1)
+        if length < 12:
+            segments.append([p1, p2])
+            continue
+        keep = (1.0 - ratio) * 0.5
+        segments.append([(x1, y1), (x1 + (x2 - x1) * keep, y1 + (y2 - y1) * keep)])
+        segments.append([(x2 - (x2 - x1) * keep, y2 - (y2 - y1) * keep), (x2, y2)])
+    return [segment for segment in segments if _polyline_length(segment) >= 4]
 
 
 def _is_duplicate_line(line: tuple[int, int, int, int], kept: list[tuple[int, int, int, int]]) -> bool:

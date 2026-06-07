@@ -24,7 +24,10 @@ python main.py \
   --detail 0.75 \
   --stroke-density 0.8 \
   --building-style learned_reference \
-  --style-dir ../../pics/style
+  --style-dir ../../pics/style \
+  --structure-line-type sketch \
+  --facade-line-type straight \
+  --entourage-line-type loose_curve
 ```
 
 ## 桌面 App
@@ -78,6 +81,9 @@ npm run desktop
 - `architectural_style.style_reference_dir`：参考钢笔画目录，默认读取 `../../pics/style` 并分析线条方向、墨色密度和结构线长度。
 - `architectural_style.line_extend_px`：建筑结构线端点外伸长度。
 - `architectural_style.facade_hatch_spacing_px`：建筑立面直线排线间距。
+- `architectural_style.structure_line_type`：建筑结构线线型，支持 `straight`、`slight_curve`、`loose_curve`、`sketch`、`broken`、`broken_curve`。
+- `architectural_style.facade_hatch_line_type`：建筑立面排线线型。
+- `architectural_style.entourage_line_type`：周边景物线型，用于曲线、省略和留白。
 
 CLI 参数会覆盖配置文件。
 

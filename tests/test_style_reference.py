@@ -41,4 +41,5 @@ def test_resolve_architectural_style_merges_learned_reference(tmp_path: Path):
     assert style["reference_summary"]["image_count"] == 1
     assert style["line_extend_px"] >= 7
     assert "facade_hatch_angle_deg" in style
-
+    assert style["structure_line_type"] in {"straight", "slight_curve", "loose_curve", "sketch", "broken", "broken_curve"}
+    assert style["facade_hatch_line_type"] in {"straight", "slight_curve", "loose_curve", "sketch", "broken", "broken_curve"}

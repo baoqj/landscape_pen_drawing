@@ -20,6 +20,12 @@ BUILTIN_ARCHITECTURAL_STYLES: dict[str, dict[str, Any]] = {
         "facade_hatch_opacity": 0.38,
         "structure_line_width": 1.08,
         "structure_line_opacity": 0.9,
+        "structure_line_type": "straight",
+        "facade_hatch_line_type": "straight",
+        "entourage_line_type": "loose_curve",
+        "line_curvature_px": 3.5,
+        "sketch_wobble_px": 1.2,
+        "broken_gap_ratio": 0.22,
         "draw_corner_extensions": True,
         "draw_mass_boxes": True,
         "draw_facade_hatching": True,
@@ -38,6 +44,12 @@ BUILTIN_ARCHITECTURAL_STYLES: dict[str, dict[str, Any]] = {
         "facade_hatch_opacity": 0.34,
         "structure_line_width": 1.12,
         "structure_line_opacity": 0.92,
+        "structure_line_type": "sketch",
+        "facade_hatch_line_type": "straight",
+        "entourage_line_type": "loose_curve",
+        "line_curvature_px": 3.0,
+        "sketch_wobble_px": 1.45,
+        "broken_gap_ratio": 0.18,
         "draw_corner_extensions": True,
         "draw_mass_boxes": True,
         "draw_facade_hatching": True,
@@ -56,6 +68,12 @@ BUILTIN_ARCHITECTURAL_STYLES: dict[str, dict[str, Any]] = {
         "facade_hatch_opacity": 0.32,
         "structure_line_width": 1.0,
         "structure_line_opacity": 0.88,
+        "structure_line_type": "straight",
+        "facade_hatch_line_type": "straight",
+        "entourage_line_type": "broken_curve",
+        "line_curvature_px": 1.4,
+        "sketch_wobble_px": 0.65,
+        "broken_gap_ratio": 0.2,
         "draw_corner_extensions": True,
         "draw_mass_boxes": True,
         "draw_facade_hatching": True,
@@ -74,6 +92,12 @@ BUILTIN_ARCHITECTURAL_STYLES: dict[str, dict[str, Any]] = {
         "facade_hatch_opacity": 0.4,
         "structure_line_width": 1.02,
         "structure_line_opacity": 0.9,
+        "structure_line_type": "sketch",
+        "facade_hatch_line_type": "slight_curve",
+        "entourage_line_type": "loose_curve",
+        "line_curvature_px": 4.2,
+        "sketch_wobble_px": 1.15,
+        "broken_gap_ratio": 0.16,
         "draw_corner_extensions": True,
         "draw_mass_boxes": False,
         "draw_facade_hatching": True,
@@ -92,6 +116,12 @@ BUILTIN_ARCHITECTURAL_STYLES: dict[str, dict[str, Any]] = {
         "facade_hatch_opacity": 0.48,
         "structure_line_width": 0.92,
         "structure_line_opacity": 0.86,
+        "structure_line_type": "straight",
+        "facade_hatch_line_type": "broken",
+        "entourage_line_type": "broken_curve",
+        "line_curvature_px": 2.4,
+        "sketch_wobble_px": 0.95,
+        "broken_gap_ratio": 0.24,
         "draw_corner_extensions": True,
         "draw_mass_boxes": True,
         "draw_facade_hatching": True,
@@ -110,6 +140,12 @@ BUILTIN_ARCHITECTURAL_STYLES: dict[str, dict[str, Any]] = {
         "facade_hatch_opacity": 0.26,
         "structure_line_width": 1.0,
         "structure_line_opacity": 0.82,
+        "structure_line_type": "slight_curve",
+        "facade_hatch_line_type": "broken",
+        "entourage_line_type": "loose_curve",
+        "line_curvature_px": 4.5,
+        "sketch_wobble_px": 1.25,
+        "broken_gap_ratio": 0.34,
         "draw_corner_extensions": True,
         "draw_mass_boxes": True,
         "draw_facade_hatching": True,
@@ -245,6 +281,7 @@ def style_from_metrics(metrics: StyleReferenceMetrics) -> dict[str, Any]:
     spacing = int(np.clip(26 - ink * 34, 7, 24))
     angle = _choose_hatch_angle(metrics)
     entourage_keep = float(np.clip(0.62 - ink * 0.72, 0.22, 0.55))
+    structure_line_type, hatch_line_type, entourage_line_type = _choose_line_types(metrics)
     return {
         "line_extend_px": line_extend,
         "corner_tick_px": float(np.clip(line_extend * 0.72, 5, 15)),
@@ -256,6 +293,9 @@ def style_from_metrics(metrics: StyleReferenceMetrics) -> dict[str, Any]:
         "max_structure_lines": int(np.clip(240 + metrics.line_count / max(metrics.image_count, 1) * 0.12, 260, 620)),
         "max_facade_hatch_lines": int(np.clip(450 + ink * 2100, 520, 1500)),
         "vegetation_looseness": float(np.clip(1.0 + (1.0 - entourage_keep), 1.1, 1.75)),
+        "structure_line_type": structure_line_type,
+        "facade_hatch_line_type": hatch_line_type,
+        "entourage_line_type": entourage_line_type,
     }
 
 
@@ -317,6 +357,18 @@ def _choose_hatch_angle(metrics: StyleReferenceMetrics) -> float:
     if metrics.horizontal_ratio > 0.45:
         return 0.0
     return 45.0
+
+
+def _choose_line_types(metrics: StyleReferenceMetrics) -> tuple[str, str, str]:
+    if metrics.ink_ratio > 0.34:
+        return "straight", "broken", "broken_curve"
+    if metrics.horizontal_ratio > 0.42:
+        return "straight", "straight", "broken_curve"
+    if metrics.vertical_ratio > 0.30:
+        return "sketch", "slight_curve", "loose_curve"
+    if metrics.diagonal_ratio > 0.38:
+        return "sketch", "slight_curve", "loose_curve"
+    return "slight_curve", "broken", "loose_curve"
 
 
 def _resolve_style_dir(style_dir: str | Path, project_root: str | Path | None) -> Path:

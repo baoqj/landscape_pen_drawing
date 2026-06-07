@@ -18,6 +18,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-size", type=int, default=None, help="Override image.max_size.")
     parser.add_argument("--building-style", default=None, help="Architectural style preset, e.g. learned_reference, architectural_extended_line, modern_facade_grid.")
     parser.add_argument("--style-dir", default=None, help="Reference pen drawing style directory.")
+    parser.add_argument("--structure-line-type", default=None, choices=["straight", "slight_curve", "loose_curve", "sketch", "broken", "broken_curve"], help="Building structure line type.")
+    parser.add_argument("--facade-line-type", default=None, choices=["straight", "slight_curve", "loose_curve", "sketch", "broken", "broken_curve"], help="Building facade hatch line type.")
+    parser.add_argument("--entourage-line-type", default=None, choices=["straight", "slight_curve", "loose_curve", "sketch", "broken", "broken_curve"], help="Non-building entourage line type.")
     parser.add_argument("--config", default=str(Path(__file__).with_name("config.yaml")), help="Path to config.yaml.")
     return parser.parse_args()
 
@@ -36,6 +39,12 @@ def main() -> None:
         overrides.setdefault("architectural_style", {})["preset"] = args.building_style
     if args.style_dir is not None:
         overrides.setdefault("architectural_style", {})["style_reference_dir"] = args.style_dir
+    if args.structure_line_type is not None:
+        overrides.setdefault("architectural_style", {})["structure_line_type"] = args.structure_line_type
+    if args.facade_line_type is not None:
+        overrides.setdefault("architectural_style", {})["facade_hatch_line_type"] = args.facade_line_type
+    if args.entourage_line_type is not None:
+        overrides.setdefault("architectural_style", {})["entourage_line_type"] = args.entourage_line_type
     config = deep_update(config, overrides)
 
     result = render_image_to_output(args.input, args.output, config, args.mode)

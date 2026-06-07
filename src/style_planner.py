@@ -25,6 +25,7 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
     architectural_structure_boost = float(arch_cfg.get("structure_boost", 1.0))
     entourage_edge_keep = float(arch_cfg.get("entourage_edge_keep", 1.0))
     vegetation_looseness = float(arch_cfg.get("vegetation_looseness", 1.0))
+    entourage_line_type = str(arch_cfg.get("entourage_line_type", "loose_curve"))
 
     style_kwargs = {
         "detail": detail,
@@ -42,6 +43,7 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
         "architectural_structure_boost": architectural_structure_boost,
         "entourage_edge_keep": entourage_edge_keep,
         "vegetation_looseness": vegetation_looseness,
+        "entourage_line_type": entourage_line_type,
     }
 
     region_styles: dict[str, RegionStyle] = {
@@ -75,6 +77,7 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
         "architectural_structure_boost": architectural_structure_boost,
         "entourage_edge_keep": entourage_edge_keep,
         "vegetation_looseness": vegetation_looseness,
+        "entourage_line_type": entourage_line_type,
     }
     return DrawingStrategy(global_strategy=global_strategy, region_styles=region_styles)
 
@@ -99,6 +102,7 @@ def assign_region_style(
     architectural_structure_boost: float = 1.0,
     entourage_edge_keep: float = 1.0,
     vegetation_looseness: float = 1.0,
+    entourage_line_type: str = "loose_curve",
 ) -> RegionStyle:
     stroke_cfg = stroke_cfg or {}
     jitter = float(stroke_cfg.get("jitter_px", 0.7))

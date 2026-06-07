@@ -1,5 +1,12 @@
 # Changelog
 
+## v0.4.0 - Line Type Controls
+
+- Added line type controls for building structure lines, building facade hatching, and surrounding scenery strokes.
+- Supported straight, slight curve, loose curve, sketch, broken, and broken-curve stroke styles.
+- Updated reference style learning to suggest line types from line-density and direction statistics.
+- Exposed line type controls in the CLI and desktop UI.
+
 ## v0.3.0 - Architectural Pen Styles
 
 - Added reference style analysis for `pics/style` pen drawings using Canny and Hough line statistics.

@@ -216,6 +216,9 @@ def _analysis_report(analysis, stroke_count: int, scale: float) -> str:
 - 参考主导线角度：{reference_summary.get('dominant_angles', [])}
 - 建筑结构线外伸：{architectural_style.get('line_extend_px', 'unknown')}
 - 建筑立面排线角度/间距：{architectural_style.get('facade_hatch_angle_deg', 'unknown')} / {architectural_style.get('facade_hatch_spacing_px', 'unknown')}
+- 建筑结构线型：{architectural_style.get('structure_line_type', 'unknown')}
+- 建筑立面线型：{architectural_style.get('facade_hatch_line_type', 'unknown')}
+- 周边景物线型：{architectural_style.get('entourage_line_type', 'unknown')}
 - 周边景物保留系数：{architectural_style.get('entourage_edge_keep', 'unknown')}
 
 ## 输出

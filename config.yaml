@@ -51,6 +51,12 @@ architectural_style:
   facade_hatch_opacity: 0.38
   structure_line_width: 1.08
   structure_line_opacity: 0.9
+  structure_line_type: straight
+  facade_hatch_line_type: straight
+  entourage_line_type: loose_curve
+  line_curvature_px: 3.5
+  sketch_wobble_px: 1.2
+  broken_gap_ratio: 0.22
   draw_corner_extensions: true
   draw_mass_boxes: true
   draw_facade_hatching: true
