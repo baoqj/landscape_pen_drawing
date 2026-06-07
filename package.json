@@ -1,6 +1,6 @@
 {
   "name": "landscape-pen-drawing-desktop",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Desktop UI for Landscape Pen Drawing Analyzer & Renderer",
   "main": "desktop/main.js",
@@ -12,4 +12,3 @@
     "electron": "^39.2.7"
   }
 }
-

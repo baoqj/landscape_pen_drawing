@@ -37,10 +37,30 @@ stroke:
   opacity_max: 0.95
   random_seed: 42
 
+architectural_style:
+  preset: learned_reference
+  learn_from_reference: true
+  style_reference_dir: ../../pics/style
+  structure_boost: 1.25
+  entourage_edge_keep: 0.46
+  line_extend_px: 12
+  corner_tick_px: 9
+  rectilinear_angle_tolerance: 18
+  facade_hatch_spacing_px: 16
+  facade_hatch_angle_deg: 45
+  facade_hatch_opacity: 0.38
+  structure_line_width: 1.08
+  structure_line_opacity: 0.9
+  draw_corner_extensions: true
+  draw_mass_boxes: true
+  draw_facade_hatching: true
+  max_structure_lines: 360
+  max_facade_hatch_lines: 900
+  vegetation_looseness: 1.25
+
 svg:
   export: true
   simplify_tolerance: 1.2
   group_by_layer: true
   scale_to_mm: true
   page_size: A4
-

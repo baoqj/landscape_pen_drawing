@@ -5,6 +5,7 @@ import math
 import cv2
 import numpy as np
 
+from .hatch_generator import clip_line_to_mask
 from .models import DrawingStrategy, RegionMap, Stroke
 
 
@@ -139,9 +140,10 @@ def generate_water_strokes(mask: np.ndarray, gray: np.ndarray, density: float = 
     return strokes
 
 
-def generate_building_structure_strokes(image: np.ndarray, building_mask: np.ndarray) -> list[Stroke]:
+def generate_building_structure_strokes(image: np.ndarray, building_mask: np.ndarray, architectural_style: dict | None = None) -> list[Stroke]:
     if not building_mask.any():
         return []
+    architectural_style = architectural_style or {}
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     edges = cv2.Canny(cv2.GaussianBlur(gray, (3, 3), 0), 55, 140)
     edges[~building_mask.astype(bool)] = 0
@@ -149,36 +151,98 @@ def generate_building_structure_strokes(image: np.ndarray, building_mask: np.nda
     min_len = max(24, w // 25)
     lines = cv2.HoughLinesP(edges, 1, np.pi / 180, threshold=35, minLineLength=min_len, maxLineGap=10)
     strokes: list[Stroke] = []
-    if lines is None:
-        return strokes
+    line_extend = float(architectural_style.get("line_extend_px", 10.0))
+    angle_tolerance = float(architectural_style.get("rectilinear_angle_tolerance", 18.0))
+    line_width = float(architectural_style.get("structure_line_width", 1.05))
+    opacity = float(architectural_style.get("structure_line_opacity", 0.86))
+    max_lines = int(architectural_style.get("max_structure_lines", 320))
     kept: list[tuple[int, int, int, int]] = []
-    for line in lines[:, 0, :]:
-        x1, y1, x2, y2 = [int(v) for v in line]
-        length = math.hypot(x2 - x1, y2 - y1)
-        if length < min_len:
-            continue
-        angle = abs(math.degrees(math.atan2(y2 - y1, x2 - x1)))
-        rectilinear = min(angle, abs(angle - 90), abs(angle - 180)) < 15
-        if not rectilinear and length < min_len * 1.8:
-            continue
-        if _is_duplicate_line((x1, y1, x2, y2), kept):
-            continue
-        kept.append((x1, y1, x2, y2))
-        strokes.append(
-            Stroke(
-                id="",
-                layer="layer_01_main_contours",
-                semantic_region="building",
-                stroke_type="structure_line",
-                points=[(float(x1), float(y1)), (float(x2), float(y2))],
-                width=1.05,
-                opacity=0.86,
-                priority=1,
-                drawing_order=0,
+    if lines is not None:
+        sorted_lines = sorted(lines[:, 0, :], key=lambda ln: math.hypot(ln[2] - ln[0], ln[3] - ln[1]), reverse=True)
+        for line in sorted_lines:
+            x1, y1, x2, y2 = [int(v) for v in line]
+            length = math.hypot(x2 - x1, y2 - y1)
+            if length < min_len:
+                continue
+            angle = abs(math.degrees(math.atan2(y2 - y1, x2 - x1)))
+            rectilinear = min(angle, abs(angle - 90), abs(angle - 180)) < angle_tolerance
+            if not rectilinear and length < min_len * 1.8:
+                continue
+            if _is_duplicate_line((x1, y1, x2, y2), kept):
+                continue
+            kept.append((x1, y1, x2, y2))
+            extended = _extend_segment((x1, y1), (x2, y2), line_extend if rectilinear else line_extend * 0.55, w, h)
+            strokes.append(
+                Stroke(
+                    id="",
+                    layer="layer_01_main_contours",
+                    semantic_region="building",
+                    stroke_type="structure_line_extended" if rectilinear else "structure_line",
+                    points=extended,
+                    width=line_width * (1.06 if rectilinear else 0.86),
+                    opacity=opacity,
+                    priority=1,
+                    drawing_order=0,
+                )
             )
-        )
-        if len(strokes) >= 240:
-            break
+            if len(strokes) >= max_lines:
+                break
+    if bool(architectural_style.get("draw_mass_boxes", True)):
+        strokes.extend(_generate_building_mass_box_strokes(building_mask.astype(bool), architectural_style))
+    return strokes
+
+
+def generate_architectural_plane_hatching(
+    building_mask: np.ndarray,
+    gray: np.ndarray,
+    architectural_style: dict | None = None,
+) -> list[Stroke]:
+    architectural_style = architectural_style or {}
+    if not bool(architectural_style.get("draw_facade_hatching", True)) or not building_mask.any():
+        return []
+    mask = building_mask.astype(bool)
+    h, w = mask.shape
+    gray_f = gray.astype(np.float32) / 255.0 if gray.dtype == np.uint8 else gray.astype(np.float32)
+    darkness = 1.0 - gray_f
+    spacing = max(4, int(architectural_style.get("facade_hatch_spacing_px", 16)))
+    angle = math.radians(float(architectural_style.get("facade_hatch_angle_deg", 45.0)))
+    opacity = float(architectural_style.get("facade_hatch_opacity", 0.36))
+    max_lines = int(architectural_style.get("max_facade_hatch_lines", 800))
+
+    d = np.array([math.cos(angle), math.sin(angle)], dtype=np.float32)
+    n = np.array([-math.sin(angle), math.cos(angle)], dtype=np.float32)
+    diag = float(math.hypot(w, h) + 4)
+    corners = np.array([[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1]], dtype=np.float32)
+    projections = corners @ n
+    start = int(math.floor(float(projections.min()) - spacing))
+    end = int(math.ceil(float(projections.max()) + spacing))
+
+    strokes: list[Stroke] = []
+    for b in range(start, end + 1, spacing):
+        center = n * b
+        p1 = center - d * diag
+        p2 = center + d * diag
+        for segment in clip_line_to_mask([(float(p1[0]), float(p1[1])), (float(p2[0]), float(p2[1]))], mask):
+            if len(segment) < 2 or _polyline_length(segment) < 16:
+                continue
+            segment_darkness = _segment_darkness(segment, darkness)
+            if segment_darkness < 0.16:
+                continue
+            strokes.append(
+                Stroke(
+                    id="",
+                    layer="layer_03_hatching",
+                    semantic_region="building",
+                    stroke_type="facade_plane_hatch",
+                    points=segment,
+                    width=0.58,
+                    opacity=min(0.72, opacity * (0.55 + segment_darkness)),
+                    priority=3,
+                    drawing_order=0,
+                )
+            )
+            if len(strokes) >= max_lines:
+                return strokes
     return strokes
 
 
@@ -253,6 +317,107 @@ def _points_inside_fraction(points: list[tuple[float, float]], mask: np.ndarray)
 
 def _clip_points_to_canvas(points: list[tuple[float, float]], w: int, h: int) -> list[tuple[float, float]]:
     return [(float(np.clip(x, 0, w - 1)), float(np.clip(y, 0, h - 1))) for x, y in points]
+
+
+def _extend_segment(
+    p1: tuple[float, float],
+    p2: tuple[float, float],
+    amount: float,
+    width: int,
+    height: int,
+) -> list[tuple[float, float]]:
+    x1, y1 = p1
+    x2, y2 = p2
+    length = math.hypot(x2 - x1, y2 - y1)
+    if length < 1:
+        return [(x1, y1), (x2, y2)]
+    ux, uy = (x2 - x1) / length, (y2 - y1) / length
+    return [
+        (float(np.clip(x1 - ux * amount, 0, width - 1)), float(np.clip(y1 - uy * amount, 0, height - 1))),
+        (float(np.clip(x2 + ux * amount, 0, width - 1)), float(np.clip(y2 + uy * amount, 0, height - 1))),
+    ]
+
+
+def _generate_building_mass_box_strokes(mask: np.ndarray, architectural_style: dict) -> list[Stroke]:
+    h, w = mask.shape
+    min_area = max(240, int(h * w * 0.006))
+    n, comps, stats, _ = cv2.connectedComponentsWithStats(mask.astype(np.uint8), 8)
+    components = sorted(range(1, n), key=lambda idx: stats[idx, cv2.CC_STAT_AREA], reverse=True)[:8]
+    extend = float(architectural_style.get("line_extend_px", 10.0))
+    tick = float(architectural_style.get("corner_tick_px", 8.0))
+    opacity = float(architectural_style.get("structure_line_opacity", 0.86)) * 0.72
+    line_width = float(architectural_style.get("structure_line_width", 1.05)) * 0.86
+    strokes: list[Stroke] = []
+    for idx in components:
+        x, y, ww, hh, area = stats[idx]
+        if area < min_area or ww < 24 or hh < 24:
+            continue
+        left, right, top, bottom = float(x), float(x + ww - 1), float(y), float(y + hh - 1)
+        box_lines = [
+            ((left, top), (right, top)),
+            ((right, top), (right, bottom)),
+            ((right, bottom), (left, bottom)),
+            ((left, bottom), (left, top)),
+        ]
+        for p1, p2 in box_lines:
+            strokes.append(
+                Stroke(
+                    id="",
+                    layer="layer_01_main_contours",
+                    semantic_region="building",
+                    stroke_type="mass_edge_extension",
+                    points=_extend_segment(p1, p2, extend * 0.45, w, h),
+                    width=line_width,
+                    opacity=opacity,
+                    priority=1,
+                    drawing_order=0,
+                )
+            )
+        if bool(architectural_style.get("draw_corner_extensions", True)):
+            corners = [(left, top), (right, top), (right, bottom), (left, bottom)]
+            for cx, cy in corners:
+                strokes.extend(
+                    [
+                        Stroke(
+                            id="",
+                            layer="layer_05_accents",
+                            semantic_region="building",
+                            stroke_type="corner_tick",
+                            points=[(float(np.clip(cx - tick, 0, w - 1)), cy), (float(np.clip(cx + tick, 0, w - 1)), cy)],
+                            width=line_width * 0.82,
+                            opacity=min(0.88, opacity * 1.08),
+                            priority=5,
+                            drawing_order=0,
+                        ),
+                        Stroke(
+                            id="",
+                            layer="layer_05_accents",
+                            semantic_region="building",
+                            stroke_type="corner_tick",
+                            points=[(cx, float(np.clip(cy - tick, 0, h - 1))), (cx, float(np.clip(cy + tick, 0, h - 1)))],
+                            width=line_width * 0.82,
+                            opacity=min(0.88, opacity * 1.08),
+                            priority=5,
+                            drawing_order=0,
+                        ),
+                    ]
+                )
+    return strokes
+
+
+def _polyline_length(points: list[tuple[float, float]]) -> float:
+    if len(points) < 2:
+        return 0.0
+    return float(sum(math.hypot(x2 - x1, y2 - y1) for (x1, y1), (x2, y2) in zip(points, points[1:])))
+
+
+def _segment_darkness(segment: list[tuple[float, float]], darkness: np.ndarray) -> float:
+    h, w = darkness.shape
+    (x1, y1), (x2, y2) = segment[0], segment[-1]
+    n = max(2, int(round(math.hypot(x2 - x1, y2 - y1))))
+    xs = np.clip(np.rint(np.linspace(x1, x2, n)).astype(int), 0, w - 1)
+    ys = np.clip(np.rint(np.linspace(y1, y2, n)).astype(int), 0, h - 1)
+    return float(np.mean(darkness[ys, xs]))
 
 
 def _is_duplicate_line(line: tuple[int, int, int, int], kept: list[tuple[int, int, int, int]]) -> bool:

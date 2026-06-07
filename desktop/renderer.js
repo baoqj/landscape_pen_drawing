@@ -38,6 +38,27 @@ const DEFAULT_CONFIG = {
     opacity_max: 0.95,
     random_seed: 42,
   },
+  architectural_style: {
+    preset: "learned_reference",
+    learn_from_reference: true,
+    style_reference_dir: "../../pics/style",
+    structure_boost: 1.25,
+    entourage_edge_keep: 0.46,
+    line_extend_px: 12,
+    corner_tick_px: 9,
+    rectilinear_angle_tolerance: 18,
+    facade_hatch_spacing_px: 16,
+    facade_hatch_angle_deg: 45,
+    facade_hatch_opacity: 0.38,
+    structure_line_width: 1.08,
+    structure_line_opacity: 0.9,
+    draw_corner_extensions: true,
+    draw_mass_boxes: true,
+    draw_facade_hatching: true,
+    max_structure_lines: 360,
+    max_facade_hatch_lines: 900,
+    vegetation_looseness: 1.25,
+  },
   svg: {
     export: true,
     simplify_tolerance: 1.2,
@@ -67,6 +88,9 @@ const PRESETS = {
     "stroke.building_jitter_px": 0.24,
     "stroke.vegetation_jitter_px": 1.35,
     "svg.simplify_tolerance": 1.2,
+    "architectural_style.preset": "learned_reference",
+    "architectural_style.learn_from_reference": true,
+    "architectural_style.entourage_edge_keep": 0.46,
   },
   "建筑细节强化": {
     "image.max_size": 1600,
@@ -87,6 +111,10 @@ const PRESETS = {
     "stroke.building_jitter_px": 0.16,
     "stroke.vegetation_jitter_px": 1.05,
     "svg.simplify_tolerance": 0.9,
+    "architectural_style.preset": "architectural_extended_line",
+    "architectural_style.learn_from_reference": true,
+    "architectural_style.line_extend_px": 18,
+    "architectural_style.entourage_edge_keep": 0.36,
   },
   "植物速写概括": {
     "image.max_size": 1400,
@@ -107,6 +135,9 @@ const PRESETS = {
     "stroke.building_jitter_px": 0.28,
     "stroke.vegetation_jitter_px": 1.9,
     "svg.simplify_tolerance": 1.8,
+    "architectural_style.preset": "light_entourage_blank",
+    "architectural_style.entourage_edge_keep": 0.28,
+    "architectural_style.vegetation_looseness": 1.8,
   },
   "极简留白": {
     "image.max_size": 1200,
@@ -127,6 +158,9 @@ const PRESETS = {
     "stroke.building_jitter_px": 0.18,
     "stroke.vegetation_jitter_px": 1.1,
     "svg.simplify_tolerance": 2.3,
+    "architectural_style.preset": "light_entourage_blank",
+    "architectural_style.entourage_edge_keep": 0.22,
+    "architectural_style.draw_facade_hatching": false,
   },
   "浓密交叉排线": {
     "image.max_size": 1500,
@@ -147,6 +181,9 @@ const PRESETS = {
     "stroke.building_jitter_px": 0.22,
     "stroke.vegetation_jitter_px": 1.35,
     "svg.simplify_tolerance": 1.0,
+    "architectural_style.preset": "dense_architectural_shadow",
+    "architectural_style.facade_hatch_spacing_px": 9,
+    "architectural_style.entourage_edge_keep": 0.3,
   },
   "水面与远景": {
     "image.max_size": 1400,
@@ -167,6 +204,102 @@ const PRESETS = {
     "stroke.building_jitter_px": 0.18,
     "stroke.vegetation_jitter_px": 1.05,
     "svg.simplify_tolerance": 1.7,
+    "architectural_style.preset": "light_entourage_blank",
+    "architectural_style.entourage_edge_keep": 0.26,
+  },
+  "建筑延长线手绘": {
+    "image.max_size": 1600,
+    "drawing.detail_level": 0.82,
+    "drawing.stroke_density": 0.82,
+    "drawing.contour_strength": 1.2,
+    "drawing.hatch_strength": 0.86,
+    "drawing.texture_strength": 0.48,
+    "drawing.sky_suppression": 0.96,
+    "drawing.background_simplification": 0.8,
+    "drawing.subject_boost": 1.48,
+    "hatching.min_spacing_px": 5,
+    "hatching.max_spacing_px": 24,
+    "hatching.cross_hatch_dark_regions": true,
+    "stroke.base_width_px": 1.02,
+    "stroke.jitter_px": 0.48,
+    "stroke.building_jitter_px": 0.14,
+    "stroke.vegetation_jitter_px": 1.65,
+    "architectural_style.preset": "architectural_extended_line",
+    "architectural_style.learn_from_reference": true,
+    "architectural_style.line_extend_px": 20,
+    "architectural_style.corner_tick_px": 14,
+    "architectural_style.facade_hatch_spacing_px": 18,
+    "architectural_style.entourage_edge_keep": 0.32,
+  },
+  "现代立面网格": {
+    "image.max_size": 1600,
+    "drawing.detail_level": 0.88,
+    "drawing.stroke_density": 0.76,
+    "drawing.contour_strength": 1.28,
+    "drawing.hatch_strength": 0.72,
+    "drawing.texture_strength": 0.36,
+    "drawing.sky_suppression": 0.97,
+    "drawing.background_simplification": 0.82,
+    "drawing.subject_boost": 1.42,
+    "hatching.min_spacing_px": 6,
+    "hatching.max_spacing_px": 28,
+    "hatching.cross_hatch_dark_regions": false,
+    "stroke.base_width_px": 0.98,
+    "stroke.jitter_px": 0.36,
+    "stroke.building_jitter_px": 0.1,
+    "stroke.vegetation_jitter_px": 1.45,
+    "architectural_style.preset": "modern_facade_grid",
+    "architectural_style.learn_from_reference": false,
+    "architectural_style.line_extend_px": 10,
+    "architectural_style.facade_hatch_angle_deg": 0,
+    "architectural_style.facade_hatch_spacing_px": 20,
+    "architectural_style.entourage_edge_keep": 0.3,
+  },
+  "历史建筑竖向速写": {
+    "image.max_size": 1700,
+    "drawing.detail_level": 0.94,
+    "drawing.stroke_density": 0.92,
+    "drawing.contour_strength": 1.24,
+    "drawing.hatch_strength": 0.98,
+    "drawing.texture_strength": 0.5,
+    "drawing.sky_suppression": 0.94,
+    "drawing.background_simplification": 0.72,
+    "drawing.subject_boost": 1.55,
+    "hatching.min_spacing_px": 4,
+    "hatching.max_spacing_px": 22,
+    "hatching.cross_hatch_dark_regions": true,
+    "stroke.base_width_px": 0.96,
+    "stroke.jitter_px": 0.42,
+    "stroke.building_jitter_px": 0.12,
+    "stroke.vegetation_jitter_px": 1.25,
+    "architectural_style.preset": "historic_vertical_sketch",
+    "architectural_style.learn_from_reference": true,
+    "architectural_style.facade_hatch_angle_deg": 82,
+    "architectural_style.facade_hatch_spacing_px": 12,
+    "architectural_style.entourage_edge_keep": 0.4,
+  },
+  "建筑浓密阴影": {
+    "image.max_size": 1500,
+    "drawing.detail_level": 0.78,
+    "drawing.stroke_density": 1.16,
+    "drawing.contour_strength": 1.08,
+    "drawing.hatch_strength": 1.32,
+    "drawing.texture_strength": 0.62,
+    "drawing.sky_suppression": 0.9,
+    "drawing.background_simplification": 0.7,
+    "drawing.subject_boost": 1.32,
+    "hatching.min_spacing_px": 3,
+    "hatching.max_spacing_px": 18,
+    "hatching.cross_hatch_dark_regions": true,
+    "stroke.base_width_px": 0.86,
+    "stroke.jitter_px": 0.55,
+    "stroke.building_jitter_px": 0.18,
+    "stroke.vegetation_jitter_px": 1.2,
+    "architectural_style.preset": "dense_architectural_shadow",
+    "architectural_style.learn_from_reference": true,
+    "architectural_style.facade_hatch_spacing_px": 8,
+    "architectural_style.facade_hatch_opacity": 0.52,
+    "architectural_style.entourage_edge_keep": 0.28,
   },
 };
 
@@ -215,6 +348,27 @@ const PARAM_GROUPS = [
       { path: "stroke.opacity_min", label: "最小透明度", type: "float", min: 0.05, max: 1, step: 0.01 },
       { path: "stroke.opacity_max", label: "最大透明度", type: "float", min: 0.1, max: 1, step: 0.01 },
       { path: "stroke.random_seed", label: "随机种子", type: "entry-int" },
+    ],
+  },
+  {
+    name: "建筑样式",
+    params: [
+      { path: "architectural_style.preset", label: "建筑模板", type: "select", values: ["learned_reference", "architectural_extended_line", "modern_facade_grid", "historic_vertical_sketch", "dense_architectural_shadow", "light_entourage_blank"] },
+      { path: "architectural_style.learn_from_reference", label: "学习参考图", type: "bool" },
+      { path: "architectural_style.style_reference_dir", label: "参考目录", type: "entry-text" },
+      { path: "architectural_style.structure_boost", label: "建筑结构强化", type: "float", min: 0.6, max: 2.0, step: 0.01 },
+      { path: "architectural_style.entourage_edge_keep", label: "周边保留", type: "float", min: 0.05, max: 1.0, step: 0.01 },
+      { path: "architectural_style.line_extend_px", label: "结构线外伸", type: "float", min: 0, max: 30, step: 0.5 },
+      { path: "architectural_style.corner_tick_px", label: "边角短线", type: "float", min: 0, max: 24, step: 0.5 },
+      { path: "architectural_style.facade_hatch_spacing_px", label: "立面线距", type: "int", min: 4, max: 36, step: 1 },
+      { path: "architectural_style.facade_hatch_angle_deg", label: "立面角度", type: "float", min: -90, max: 90, step: 1 },
+      { path: "architectural_style.facade_hatch_opacity", label: "立面透明度", type: "float", min: 0.05, max: 0.8, step: 0.01 },
+      { path: "architectural_style.structure_line_width", label: "结构线宽", type: "float", min: 0.3, max: 2.4, step: 0.01 },
+      { path: "architectural_style.structure_line_opacity", label: "结构透明度", type: "float", min: 0.1, max: 1.0, step: 0.01 },
+      { path: "architectural_style.draw_corner_extensions", label: "绘制边角外伸", type: "bool" },
+      { path: "architectural_style.draw_mass_boxes", label: "绘制体块边线", type: "bool" },
+      { path: "architectural_style.draw_facade_hatching", label: "绘制立面排线", type: "bool" },
+      { path: "architectural_style.vegetation_looseness", label: "景物自由度", type: "float", min: 0.6, max: 2.4, step: 0.01 },
     ],
   },
   {
@@ -425,11 +579,14 @@ function createParamControl(param) {
     select.value = value;
     select.addEventListener("change", () => setByPath(state.config, param.path, select.value));
     row.appendChild(select);
-  } else if (param.type === "entry-int") {
+  } else if (param.type === "entry-int" || param.type === "entry-text") {
     const input = document.createElement("input");
-    input.type = "number";
+    input.type = param.type === "entry-int" ? "number" : "text";
     input.value = value;
-    input.addEventListener("change", () => setByPath(state.config, param.path, Math.round(Number(input.value))));
+    input.addEventListener("change", () => {
+      const nextValue = param.type === "entry-int" ? Math.round(Number(input.value)) : input.value;
+      setByPath(state.config, param.path, nextValue);
+    });
     row.appendChild(input);
   }
   return row;
@@ -631,4 +788,3 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
 }
-

@@ -15,12 +15,14 @@ from .segmentation import segment_regions
 from .stroke_exporter import export_strokes_json
 from .stroke_generator import (
     edges_to_strokes,
+    generate_architectural_plane_hatching,
     generate_building_structure_strokes,
     generate_vegetation_strokes,
     generate_water_strokes,
     sort_strokes_for_plotter,
 )
 from .style_planner import create_drawing_strategy
+from .style_reference import resolve_architectural_style
 from .subject_detection import detect_subject
 from .svg_exporter import export_svg
 from .utils import ensure_dir, mask_color_overlay, save_rgb, write_json
@@ -32,9 +34,11 @@ def render_image_to_output(input_path: str | Path, output_dir: str | Path, confi
 
     output_path = ensure_dir(output_dir)
     debug_dir = ensure_dir(output_path / "debug")
+    config = _with_resolved_architecture_style(config)
     image, scale = load_image(input_path, int(config.get("image", {}).get("max_size", 1600)))
 
     analysis = analyze_image(image)
+    analysis.content["architectural_style"] = config.get("architectural_style", {}).get("resolved", {})
     regions = segment_regions(image, analysis)
     detect_subject(image, analysis, regions)
     strategy = create_drawing_strategy(analysis, regions, config)
@@ -47,7 +51,10 @@ def render_image_to_output(input_path: str | Path, output_dir: str | Path, confi
 
     strokes = []
     strokes.extend(edges_to_strokes(enhanced_edges, regions, strategy))
-    strokes.extend(generate_building_structure_strokes(image, regions.semantic_masks.get("building", np.zeros_like(gray, dtype=bool))))
+    architectural_style = config.get("architectural_style", {}).get("resolved", {})
+    building_mask = regions.semantic_masks.get("building", np.zeros_like(gray, dtype=bool))
+    strokes.extend(generate_building_structure_strokes(image, building_mask, architectural_style))
+    strokes.extend(generate_architectural_plane_hatching(building_mask, gray, architectural_style))
     strokes.extend(_generate_semantic_hatching(regions, hatch_density, config))
     strokes.extend(
         generate_vegetation_strokes(
@@ -91,6 +98,7 @@ def render_image_to_output(input_path: str | Path, output_dir: str | Path, confi
 
 def _generate_semantic_hatching(regions, density_map: np.ndarray, config: dict[str, Any]):
     hatch_cfg = config.get("hatching", {})
+    arch_style = config.get("architectural_style", {}).get("resolved", {})
     min_spacing = int(hatch_cfg.get("min_spacing_px", 4))
     max_spacing = int(hatch_cfg.get("max_spacing_px", 22))
     mid_luminance_threshold = float(hatch_cfg.get("mid_threshold", 0.65))
@@ -99,7 +107,7 @@ def _generate_semantic_hatching(regions, density_map: np.ndarray, config: dict[s
     cross_density = max(0.25, min(0.9, 1.0 - dark_luminance_threshold))
     strokes = []
     region_angles = {
-        "building": float(hatch_cfg.get("building_angle_deg", 45)),
+        "building": float(arch_style.get("facade_hatch_angle_deg", hatch_cfg.get("building_angle_deg", 45))),
         "road": 18.0,
         "ground": 28.0,
         "mountain": 8.0,
@@ -119,11 +127,11 @@ def _generate_semantic_hatching(regions, density_map: np.ndarray, config: dict[s
                 density_map,
                 angle,
                 semantic_region=name,
-                min_spacing_px=min_spacing,
-                max_spacing_px=max_spacing,
+                min_spacing_px=max(3, int(arch_style.get("facade_hatch_spacing_px", min_spacing))) if name == "building" else min_spacing,
+                max_spacing_px=max_spacing if name != "building" else max(max_spacing, int(arch_style.get("facade_hatch_spacing_px", max_spacing)) + 8),
                 min_density=max(min_density, 0.20) if name == "vegetation" else min_density,
                 width=0.72 if name != "building" else 0.82,
-                opacity=0.52 if name != "building" else 0.62,
+                opacity=0.52 if name != "building" else float(arch_style.get("facade_hatch_opacity", 0.62)),
             )
         )
         if bool(hatch_cfg.get("cross_hatch_dark_regions", True)) and name in {"building", "ground", "road", "person"}:
@@ -138,6 +146,16 @@ def _generate_semantic_hatching(regions, density_map: np.ndarray, config: dict[s
                 )
             )
     return strokes
+
+
+def _with_resolved_architecture_style(config: dict[str, Any]) -> dict[str, Any]:
+    import copy
+
+    merged = copy.deepcopy(config)
+    project_root = Path(__file__).resolve().parents[1]
+    merged.setdefault("architectural_style", {})
+    merged["architectural_style"]["resolved"] = resolve_architectural_style(merged, project_root)
+    return merged
 
 
 def _subject_accent_strokes(edges: np.ndarray, regions, strategy):
@@ -158,6 +176,8 @@ def _analysis_report(analysis, stroke_count: int, scale: float) -> str:
     tone = analysis.tone
     structure = analysis.structure
     detected = ", ".join(content.get("detected_regions", [])) or "unknown"
+    architectural_style = content.get("architectural_style", {})
+    reference_summary = architectural_style.get("reference_summary", {})
     return f"""# Landscape Pen Drawing Analysis Report
 
 ## 图像状态
@@ -187,6 +207,16 @@ def _analysis_report(analysis, stroke_count: int, scale: float) -> str:
 - 天空：大面积留白，抑制边缘和排线。
 - 水面：以水平短线和稀疏波纹表现，不直接填灰。
 - 远景：提高最短线段门槛并降低透明度，避免抢主体。
+
+## 建筑手绘风格
+
+- 建筑模板：{architectural_style.get('preset', 'unknown')}
+- 参考图数量：{reference_summary.get('image_count', 0)}
+- 参考线稿墨色覆盖：{reference_summary.get('ink_ratio', 'unknown')}
+- 参考主导线角度：{reference_summary.get('dominant_angles', [])}
+- 建筑结构线外伸：{architectural_style.get('line_extend_px', 'unknown')}
+- 建筑立面排线角度/间距：{architectural_style.get('facade_hatch_angle_deg', 'unknown')} / {architectural_style.get('facade_hatch_spacing_px', 'unknown')}
+- 周边景物保留系数：{architectural_style.get('entourage_edge_keep', 'unknown')}
 
 ## 输出
 

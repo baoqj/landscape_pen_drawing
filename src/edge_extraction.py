@@ -32,6 +32,8 @@ def extract_xdog_edges(gray: np.ndarray) -> np.ndarray:
 def enhance_edges_by_region(edges: np.ndarray, regions: RegionMap, strategy: DrawingStrategy) -> np.ndarray:
     edges_f = (edges > 0).astype(np.float32)
     weighted = np.zeros_like(edges_f)
+    entourage_keep = float(strategy.global_strategy.get("entourage_edge_keep", 1.0))
+    building_boost = float(strategy.global_strategy.get("architectural_structure_boost", 1.0))
     for label, name in regions.label_names.items():
         mask = regions.labels == label
         if not mask.any():
@@ -43,7 +45,12 @@ def enhance_edges_by_region(edges: np.ndarray, regions: RegionMap, strategy: Dra
             y_mean = float(np.mean(ys) / max(edges.shape[0] - 1, 1))
             depth = "foreground" if y_mean > 0.62 else "background" if y_mean < 0.38 else "midground"
         style = strategy.style_for(name, depth, False)
-        weighted[mask] = edges_f[mask] * style.edge_strength
+        multiplier = style.edge_strength
+        if name == "building":
+            multiplier *= building_boost
+        elif name in {"vegetation", "mountain", "ground", "road", "water"}:
+            multiplier *= max(0.18, entourage_keep)
+        weighted[mask] = edges_f[mask] * multiplier
 
     weighted[regions.subject_mask] *= 1.35
     sky = regions.semantic_masks.get("sky")
@@ -57,4 +64,3 @@ def enhance_edges_by_region(edges: np.ndarray, regions: RegionMap, strategy: Dra
     thresh = np.percentile(weighted[weighted > 0], 45) if np.any(weighted > 0) else 1.0
     enhanced = (weighted >= max(0.25, thresh)).astype(np.uint8) * 255
     return cv2.morphologyEx(enhanced, cv2.MORPH_OPEN, np.ones((2, 2), np.uint8))
-

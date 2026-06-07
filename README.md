@@ -22,7 +22,9 @@ python main.py \
   --mode pure \
   --paper A4 \
   --detail 0.75 \
-  --stroke-density 0.8
+  --stroke-density 0.8 \
+  --building-style learned_reference \
+  --style-dir ../../pics/style
 ```
 
 ## 桌面 App
@@ -38,6 +40,7 @@ npm run desktop
 - 查看原图和最近生成的钢笔画预览。
 - 单张生成或批量生成。
 - 通过模板快速设置风格：平衡钢笔稿、建筑细节强化、植物速写概括、极简留白、浓密交叉排线、水面与远景。
+- 通过建筑样式模板快速设置：参考图学习、建筑延长线、现代立面网格、历史建筑竖向速写、浓密建筑阴影、周边留白。
 - 通过滑杆、输入框、下拉菜单和复选框调节图像尺寸、纸色、细节等级、笔触密度、轮廓强度、排线强度、纹理强度、天空抑制、远景简化、主体强化、排线间距、暗部阈值、建筑排线角度、线宽、抖动、透明度、随机种子和 SVG 页面选项。
 
 输出目录包含：
@@ -71,6 +74,10 @@ npm run desktop
 - `hatching.min_spacing_px` / `hatching.max_spacing_px`：排线间距范围。
 - `stroke.jitter_px`：手绘抖动强度。
 - `stroke.building_jitter_px`：建筑结构线抖动强度。
+- `architectural_style.preset`：建筑风格模板，支持 `learned_reference`、`architectural_extended_line`、`modern_facade_grid`、`historic_vertical_sketch`、`dense_architectural_shadow`、`light_entourage_blank`。
+- `architectural_style.style_reference_dir`：参考钢笔画目录，默认读取 `../../pics/style` 并分析线条方向、墨色密度和结构线长度。
+- `architectural_style.line_extend_px`：建筑结构线端点外伸长度。
+- `architectural_style.facade_hatch_spacing_px`：建筑立面直线排线间距。
 
 CLI 参数会覆盖配置文件。
 

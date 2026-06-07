@@ -16,6 +16,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--detail", type=float, default=None, help="Override drawing.detail_level.")
     parser.add_argument("--stroke-density", type=float, default=None, help="Override drawing.stroke_density.")
     parser.add_argument("--max-size", type=int, default=None, help="Override image.max_size.")
+    parser.add_argument("--building-style", default=None, help="Architectural style preset, e.g. learned_reference, architectural_extended_line, modern_facade_grid.")
+    parser.add_argument("--style-dir", default=None, help="Reference pen drawing style directory.")
     parser.add_argument("--config", default=str(Path(__file__).with_name("config.yaml")), help="Path to config.yaml.")
     return parser.parse_args()
 
@@ -30,6 +32,10 @@ def main() -> None:
         overrides.setdefault("drawing", {})["stroke_density"] = args.stroke_density
     if args.max_size is not None:
         overrides.setdefault("image", {})["max_size"] = args.max_size
+    if args.building_style is not None:
+        overrides.setdefault("architectural_style", {})["preset"] = args.building_style
+    if args.style_dir is not None:
+        overrides.setdefault("architectural_style", {})["style_reference_dir"] = args.style_dir
     config = deep_update(config, overrides)
 
     result = render_image_to_output(args.input, args.output, config, args.mode)

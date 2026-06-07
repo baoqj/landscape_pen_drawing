@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.3.0 - Architectural Pen Styles
+
+- Added reference style analysis for `pics/style` pen drawings using Canny and Hough line statistics.
+- Added learned architectural style parameters for line density, dominant hatch angle, line extension, and entourage simplification.
+- Added building-specific stroke generation with extended construction lines, mass corner ticks, and straight facade hatching.
+- Added architectural presets for extended hand lines, modern facade grids, historic vertical sketches, dense shadows, and light entourage blank space.
+- Added CLI and desktop controls for selecting architectural pen styles and reference directories.
+
 ## v0.2.0 - Desktop UI
 
 - Added a Tkinter desktop app for browsing image directories and rendering selected or batched images.

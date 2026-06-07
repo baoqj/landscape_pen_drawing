@@ -7,6 +7,7 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
     config = config or {}
     drawing_cfg = config.get("drawing", {})
     stroke_cfg = config.get("stroke", {})
+    arch_cfg = config.get("architectural_style", {}).get("resolved", config.get("architectural_style", {}))
 
     detail = float(drawing_cfg.get("detail_level", 0.75))
     density = float(drawing_cfg.get("stroke_density", 0.8))
@@ -21,6 +22,9 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
     opacity_min = float(stroke_cfg.get("opacity_min", 0.45))
     opacity_max = float(stroke_cfg.get("opacity_max", 0.95))
     width_variation = float(stroke_cfg.get("width_variation", 0.25))
+    architectural_structure_boost = float(arch_cfg.get("structure_boost", 1.0))
+    entourage_edge_keep = float(arch_cfg.get("entourage_edge_keep", 1.0))
+    vegetation_looseness = float(arch_cfg.get("vegetation_looseness", 1.0))
 
     style_kwargs = {
         "detail": detail,
@@ -35,6 +39,9 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
         "subject_boost": subject_boost,
         "opacity_min": opacity_min,
         "opacity_max": opacity_max,
+        "architectural_structure_boost": architectural_structure_boost,
+        "entourage_edge_keep": entourage_edge_keep,
+        "vegetation_looseness": vegetation_looseness,
     }
 
     region_styles: dict[str, RegionStyle] = {
@@ -65,6 +72,9 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
         "opacity_min": opacity_min,
         "opacity_max": opacity_max,
         "width_variation": width_variation,
+        "architectural_structure_boost": architectural_structure_boost,
+        "entourage_edge_keep": entourage_edge_keep,
+        "vegetation_looseness": vegetation_looseness,
     }
     return DrawingStrategy(global_strategy=global_strategy, region_styles=region_styles)
 
@@ -86,6 +96,9 @@ def assign_region_style(
     subject_boost: float = 1.3,
     opacity_min: float = 0.45,
     opacity_max: float = 0.95,
+    architectural_structure_boost: float = 1.0,
+    entourage_edge_keep: float = 1.0,
+    vegetation_looseness: float = 1.0,
 ) -> RegionStyle:
     stroke_cfg = stroke_cfg or {}
     jitter = float(stroke_cfg.get("jitter_px", 0.7))
@@ -106,18 +119,30 @@ def assign_region_style(
         edge, hatch, texture, opacity, simplify, min_len, angles, suppress = 0.30 * keep, 0.20 * keep, 0.12 * keep, 0.35, 3.0, 22.0, (5.0,), True
     elif region_type == "building":
         edge, hatch, texture, opacity, simplify, min_len, angles = 1.18 * detail, 0.95 * density, 0.35, 0.88, 0.9, 14.0, (45.0, -45.0)
+        edge *= architectural_structure_boost
+        hatch *= min(1.45, architectural_structure_boost)
+        min_len *= max(0.72, 1.0 / max(architectural_structure_boost, 0.1))
         jitter = building_jitter
     elif region_type == "person":
         edge, hatch, texture, opacity, simplify, min_len, angles = 1.25 * detail, 0.55 * density, 0.25, 0.9, 0.8, 5.0, (65.0,)
     elif region_type == "vegetation":
         edge, hatch, texture, opacity, simplify, min_len, angles = 0.62 * detail, 0.62 * density, 1.15 * density, 0.58, 2.3, 7.0, (25.0, 115.0)
+        edge *= entourage_edge_keep
+        hatch *= max(0.28, entourage_edge_keep)
+        texture *= vegetation_looseness
+        opacity *= max(0.62, entourage_edge_keep)
+        simplify *= vegetation_looseness
         jitter = vegetation_jitter
     elif region_type == "water":
         edge, hatch, texture, opacity, simplify, min_len, angles = 0.45 * detail, 0.45 * density, 0.75 * density, 0.52, 2.0, 13.0, (0.0,)
+        edge *= max(0.38, entourage_edge_keep)
     elif region_type == "road":
         edge, hatch, texture, opacity, simplify, min_len, angles = 0.7 * detail, 0.78 * density, 0.45, 0.62, 1.8, 13.0, (18.0,)
+        edge *= max(0.45, entourage_edge_keep)
     elif region_type == "mountain":
         edge, hatch, texture, opacity, simplify, min_len, angles = 0.36 * detail, 0.35 * density, 0.28, 0.45, 2.8, 20.0, (10.0,)
+        edge *= entourage_edge_keep
+        hatch *= entourage_edge_keep
 
     if depth_layer == "background":
         keep = max(0.12, 1.0 - 0.72 * background_simplification)
@@ -160,4 +185,3 @@ def assign_region_style(
         hatch_angles=angles,
         suppress_edges=suppress,
     )
-
