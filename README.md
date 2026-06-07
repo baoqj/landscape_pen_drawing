@@ -1,0 +1,67 @@
+# Landscape Pen Drawing Analyzer & Renderer
+
+输入一张风景图片，程序会用可解释的 Python 图像分析流程估计亮度、对比度、边缘密度、纹理复杂度、主体、前景/中景/远景和语义区域，然后把画面转换为由轮廓线、结构线、排线、短线和水面波纹组成的黑白钢笔画。
+
+默认模式是 `pure`，只依赖 OpenCV、NumPy、Pillow、PyYAML 和 svgwrite，不调用外部 AI 生图 API。
+
+## 安装
+
+```bash
+cd /Users/aibao/Documents/Project/AI-Art/Code/landscape_pen_drawing
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+## 运行
+
+```bash
+python main.py \
+  --input ../../pics/01.jpeg \
+  --output outputs/01_pen \
+  --mode pure \
+  --paper A4 \
+  --detail 0.75 \
+  --stroke-density 0.8
+```
+
+输出目录包含：
+
+- `analysis.json`：图像指标、内容估计和绘画策略。
+- `analysis_report.md`：自然语言分析报告。
+- `debug/`：灰度图、对比度图、边缘图、显著性图、区域图、主体 mask、语义 mask、排线密度图。
+- `pen_drawing.png`：最终钢笔画。
+- `pen_drawing.svg`：按图层分组的 SVG polyline 路径。
+- `strokes.json`：每条笔触的层、语义区域、点序列、宽度、透明度和绘制顺序。
+- `region_preview.png`：语义分区预览。
+
+## 算法流程
+
+1. 图像预处理：限制最大边、去噪、灰度转换和局部对比度分析。
+2. 状态分析：计算亮度、RMS 对比度、Michelson 对比度、动态范围、暗部/中间调/高光比例、Laplacian 清晰度、边缘密度、纹理复杂度、饱和度和色彩丰富度。
+3. 语义区域估计：用 HSV 颜色规则、边缘密度、纹理、Hough 直线和位置先验估计天空、植物、水面、建筑、道路、人物候选、山体/远景和地面。
+4. 主体估计：融合显著性、局部对比度、边缘能量、中心权重和语义权重，输出 `subject_mask`。
+5. 风格规划：主体和建筑增强轮廓；植物减少碎边，用短曲线概括；天空抑制线条；水面使用水平短线；远景降低线条密度。
+6. 线条生成：Canny/xDoG 多尺度边缘转换为 polyline stroke，建筑额外使用 HoughLinesP 生成结构线。
+7. 明暗排线：根据亮度生成 `hatch_density_map`，在 mask 内裁切平行排线，深暗区域叠加 cross-hatch。
+8. 渲染导出：用微暖纸色背景和深色钢笔线渲染 PNG，同时导出适合绘图机后处理的 SVG 和 `strokes.json`。
+
+## 调参
+
+主要参数位于 `config.yaml`：
+
+- `image.max_size`：处理最大边长。
+- `drawing.detail_level`：轮廓和细节保留强度。
+- `drawing.stroke_density`：排线和纹理笔触密度。
+- `hatching.min_spacing_px` / `hatching.max_spacing_px`：排线间距范围。
+- `stroke.jitter_px`：手绘抖动强度。
+- `stroke.building_jitter_px`：建筑结构线抖动强度。
+
+CLI 参数会覆盖配置文件。
+
+## 测试
+
+```bash
+pytest -q
+```
+
