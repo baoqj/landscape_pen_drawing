@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Landscape Pen Drawing Studio</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <label class="path-field">
+        <span>图片目录</span>
+        <input id="inputDir" type="text" />
+      </label>
+      <button id="chooseInput">选择</button>
+      <label class="check"><input id="recursive" type="checkbox" />递归</label>
+      <label class="path-field">
+        <span>输出目录</span>
+        <input id="outputDir" type="text" />
+      </label>
+      <button id="chooseOutput">选择</button>
+    </header>
+
+    <main class="workspace">
+      <section class="image-panel">
+        <div class="panel-head">
+          <h1>图片列表</h1>
+          <button id="refresh">刷新</button>
+        </div>
+        <div class="list-options">
+          <label>模式
+            <select id="mode">
+              <option value="pure">pure</option>
+              <option value="enhanced">enhanced</option>
+            </select>
+          </label>
+          <label>后缀<input id="outputSuffix" type="text" value="pen" /></label>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>文件</th>
+                <th>尺寸</th>
+                <th>大小</th>
+              </tr>
+            </thead>
+            <tbody id="imageTable"></tbody>
+          </table>
+        </div>
+        <div class="actions">
+          <button id="renderSelected">生成选中</button>
+          <button id="renderAll">批量生成</button>
+        </div>
+      </section>
+
+      <section class="preview-panel">
+        <div class="preview-block">
+          <div class="panel-head">
+            <h2>原图</h2>
+          </div>
+          <div class="preview-surface"><img id="originalPreview" alt="" /></div>
+        </div>
+        <div class="preview-block">
+          <div class="panel-head">
+            <h2>输出预览</h2>
+            <button id="openOutput">打开输出目录</button>
+          </div>
+          <div class="preview-surface"><img id="outputPreview" alt="" /></div>
+        </div>
+      </section>
+
+      <section class="control-panel">
+        <div class="preset-row">
+          <label>模板
+            <select id="presetSelect"></select>
+          </label>
+          <button id="applyPreset">应用</button>
+        </div>
+        <nav class="tabs" id="tabs"></nav>
+        <div class="param-scroll" id="paramPanels"></div>
+        <div class="control-actions">
+          <button id="resetConfig">恢复配置</button>
+          <button id="cancelRender">取消</button>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div id="status">Ready</div>
+      <progress id="progress" max="100" value="0"></progress>
+    </footer>
+    <pre id="log"></pre>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>
+

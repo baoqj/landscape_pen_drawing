@@ -97,8 +97,9 @@ def generate_cross_hatching(
     semantic_region: str = "unknown",
     min_spacing_px: int = 4,
     max_spacing_px: int = 22,
+    dark_density_threshold: float = 0.52,
 ) -> list[Stroke]:
-    dark_mask = mask.astype(bool) & (density_map > 0.52)
+    dark_mask = mask.astype(bool) & (density_map > dark_density_threshold)
     first = generate_hatching(
         dark_mask,
         density_map,
@@ -188,4 +189,3 @@ def _center_crop(points: list[tuple[float, float]], keep_ratio: float) -> list[t
     keep = max(2, int(round(n * keep_ratio)))
     start = max(0, (n - keep) // 2)
     return points[start : start + keep]
-

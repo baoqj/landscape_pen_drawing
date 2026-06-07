@@ -7,35 +7,45 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
     config = config or {}
     drawing_cfg = config.get("drawing", {})
     stroke_cfg = config.get("stroke", {})
+
     detail = float(drawing_cfg.get("detail_level", 0.75))
     density = float(drawing_cfg.get("stroke_density", 0.8))
+    contour_strength = float(drawing_cfg.get("contour_strength", 1.0))
+    hatch_strength = float(drawing_cfg.get("hatch_strength", 0.85))
+    texture_strength = float(drawing_cfg.get("texture_strength", 0.65))
+    sky_suppression = float(drawing_cfg.get("sky_suppression", 0.9))
+    background_simplification = float(drawing_cfg.get("background_simplification", 0.7))
+    subject_boost = float(drawing_cfg.get("subject_boost", 1.3))
+
     base_width = float(stroke_cfg.get("base_width_px", 1.1))
+    opacity_min = float(stroke_cfg.get("opacity_min", 0.45))
+    opacity_max = float(stroke_cfg.get("opacity_max", 0.95))
+    width_variation = float(stroke_cfg.get("width_variation", 0.25))
+
+    style_kwargs = {
+        "detail": detail,
+        "density": density,
+        "base_width": base_width,
+        "stroke_cfg": stroke_cfg,
+        "contour_strength": contour_strength,
+        "hatch_strength": hatch_strength,
+        "texture_strength": texture_strength,
+        "sky_suppression": sky_suppression,
+        "background_simplification": background_simplification,
+        "subject_boost": subject_boost,
+        "opacity_min": opacity_min,
+        "opacity_max": opacity_max,
+    }
 
     region_styles: dict[str, RegionStyle] = {
-        "default": RegionStyle("ground", "midground", False, 0.75, 0.65, 0.45, base_width, 0.62, 0.7, 1.8, 12, (35.0,)),
-        "subject": RegionStyle(regions.main_subject, "midground", True, 1.45, 1.2, 0.9, base_width * 1.12, 0.92, 0.45, 0.9, 6, (45.0, -45.0)),
+        "default": assign_region_style("ground", "midground", False, **style_kwargs),
+        "subject": assign_region_style(regions.main_subject, "midground", True, **style_kwargs),
     }
 
     for semantic in ["sky", "vegetation", "water", "building", "road", "mountain", "person", "ground"]:
         for depth in ["foreground", "midground", "background"]:
-            region_styles[f"{semantic}:{depth}"] = assign_region_style(
-                semantic,
-                depth,
-                False,
-                detail=detail,
-                density=density,
-                base_width=base_width,
-                stroke_cfg=stroke_cfg,
-            )
-        region_styles[semantic] = assign_region_style(
-            semantic,
-            "midground",
-            False,
-            detail=detail,
-            density=density,
-            base_width=base_width,
-            stroke_cfg=stroke_cfg,
-        )
+            region_styles[f"{semantic}:{depth}"] = assign_region_style(semantic, depth, False, **style_kwargs)
+        region_styles[semantic] = assign_region_style(semantic, "midground", False, **style_kwargs)
 
     global_strategy = {
         "subject": "主体系数提高：保留更多轮廓、结构线和交叉排线。",
@@ -46,6 +56,15 @@ def create_drawing_strategy(analysis: ImageAnalysisResult, regions: RegionMap, c
         "background": "远景降低对比度和线条密度，避免抢主体。",
         "detail_level": detail,
         "stroke_density": density,
+        "contour_strength": contour_strength,
+        "hatch_strength": hatch_strength,
+        "texture_strength": texture_strength,
+        "sky_suppression": sky_suppression,
+        "background_simplification": background_simplification,
+        "subject_boost": subject_boost,
+        "opacity_min": opacity_min,
+        "opacity_max": opacity_max,
+        "width_variation": width_variation,
     }
     return DrawingStrategy(global_strategy=global_strategy, region_styles=region_styles)
 
@@ -59,11 +78,20 @@ def assign_region_style(
     density: float = 0.8,
     base_width: float = 1.1,
     stroke_cfg: dict | None = None,
+    contour_strength: float = 1.0,
+    hatch_strength: float = 0.85,
+    texture_strength: float = 0.65,
+    sky_suppression: float = 0.9,
+    background_simplification: float = 0.7,
+    subject_boost: float = 1.3,
+    opacity_min: float = 0.45,
+    opacity_max: float = 0.95,
 ) -> RegionStyle:
     stroke_cfg = stroke_cfg or {}
     jitter = float(stroke_cfg.get("jitter_px", 0.7))
     building_jitter = float(stroke_cfg.get("building_jitter_px", 0.25))
     vegetation_jitter = float(stroke_cfg.get("vegetation_jitter_px", 1.4))
+
     opacity = 0.65
     edge = 0.8 * detail
     hatch = 0.65 * density
@@ -74,7 +102,8 @@ def assign_region_style(
     suppress = False
 
     if region_type == "sky":
-        edge, hatch, texture, opacity, simplify, min_len, angles, suppress = 0.10, 0.08, 0.05, 0.35, 3.0, 22.0, (5.0,), True
+        keep = max(0.02, 1.0 - sky_suppression)
+        edge, hatch, texture, opacity, simplify, min_len, angles, suppress = 0.30 * keep, 0.20 * keep, 0.12 * keep, 0.35, 3.0, 22.0, (5.0,), True
     elif region_type == "building":
         edge, hatch, texture, opacity, simplify, min_len, angles = 1.18 * detail, 0.95 * density, 0.35, 0.88, 0.9, 14.0, (45.0, -45.0)
         jitter = building_jitter
@@ -91,23 +120,30 @@ def assign_region_style(
         edge, hatch, texture, opacity, simplify, min_len, angles = 0.36 * detail, 0.35 * density, 0.28, 0.45, 2.8, 20.0, (10.0,)
 
     if depth_layer == "background":
-        edge *= 0.50
-        hatch *= 0.48
-        texture *= 0.48
+        keep = max(0.12, 1.0 - 0.72 * background_simplification)
+        edge *= keep
+        hatch *= keep
+        texture *= keep
         opacity *= 0.72
-        min_len *= 1.55
-        simplify *= 1.45
+        min_len *= 1.0 + background_simplification
+        simplify *= 1.0 + background_simplification * 0.65
     elif depth_layer == "foreground":
         edge *= 1.06
         hatch *= 1.08
         texture *= 1.05
 
     if is_subject:
-        edge *= 1.35
-        hatch *= 1.20
-        opacity = min(0.95, opacity * 1.25)
+        edge *= subject_boost
+        hatch *= 0.85 + subject_boost * 0.25
+        texture *= 0.85 + subject_boost * 0.18
+        opacity = min(0.98, opacity * 1.25)
         min_len *= 0.75
         simplify *= 0.7
+
+    edge *= contour_strength
+    hatch *= hatch_strength
+    texture *= texture_strength
+    opacity = max(opacity_min, min(opacity_max, opacity))
 
     return RegionStyle(
         semantic_region=region_type,

@@ -35,13 +35,17 @@ def edges_to_strokes(edges: np.ndarray, regions: RegionMap, strategy: DrawingStr
         if approx.shape[0] < 2:
             continue
         points = [(float(x), float(y)) for x, y in approx]
+        width = style.line_width * (1.15 if is_subject else 0.92)
+        width_variation = float(strategy.global_strategy.get("width_variation", 0.0))
+        if width_variation > 0:
+            width *= 1.0 + ((_stable_hash(cx, cy, length) % 100) / 100.0 - 0.5) * width_variation
         stroke = Stroke(
             id="",
             layer="layer_01_main_contours" if is_subject or semantic in {"building", "person"} else "layer_02_secondary_edges",
             semantic_region=semantic,
             stroke_type="contour" if is_subject else "edge",
             points=points,
-            width=style.line_width * (1.15 if is_subject else 0.92),
+            width=max(0.1, width),
             opacity=style.opacity,
             priority=1 if is_subject else 2,
             drawing_order=0,
@@ -266,4 +270,3 @@ def _stable_hash(*values: float) -> int:
         acc ^= iv & 0xFFFFFFFF
         acc = (acc * 16777619) & 0xFFFFFFFF
     return acc
-

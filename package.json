@@ -1,0 +1,15 @@
+{
+  "name": "landscape-pen-drawing-desktop",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Desktop UI for Landscape Pen Drawing Analyzer & Renderer",
+  "main": "desktop/main.js",
+  "scripts": {
+    "desktop": "electron .",
+    "check:desktop": "node --check desktop/main.js && node --check desktop/preload.js && node --check desktop/renderer.js"
+  },
+  "devDependencies": {
+    "electron": "^39.2.7"
+  }
+}
+
