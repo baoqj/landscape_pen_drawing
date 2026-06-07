@@ -11,6 +11,7 @@ from .hatch_generator import create_hatch_density_map, generate_cross_hatching, 
 from .image_analysis import analyze_image
 from .image_io import load_image
 from .pen_renderer import render_debug_layers, render_pen_drawing, save_pil_image
+from .pencil_renderer import render_pencil_debug_layers, render_pencil_drawing
 from .segmentation import segment_regions
 from .stroke_exporter import export_strokes_json
 from .stroke_generator import (
@@ -25,7 +26,7 @@ from .style_planner import create_drawing_strategy
 from .style_reference import resolve_architectural_style
 from .subject_detection import detect_subject
 from .svg_exporter import export_svg
-from .utils import ensure_dir, mask_color_overlay, save_rgb, write_json
+from .utils import ensure_dir, mask_color_overlay, save_gray, save_rgb, write_json
 
 
 def render_image_to_output(input_path: str | Path, output_dir: str | Path, config: dict[str, Any], mode: str = "pure") -> dict[str, Any]:
@@ -36,9 +37,43 @@ def render_image_to_output(input_path: str | Path, output_dir: str | Path, confi
     debug_dir = ensure_dir(output_path / "debug")
     config = _with_resolved_architecture_style(config)
     image, scale = load_image(input_path, int(config.get("image", {}).get("max_size", 1600)))
+    effect_type = str(config.get("effect", {}).get("type", "pen"))
 
     analysis = analyze_image(image)
     analysis.content["architectural_style"] = config.get("architectural_style", {}).get("resolved", {})
+    analysis.content["effect_type"] = effect_type
+
+    if effect_type == "pencil":
+        pencil_result = render_pencil_drawing(image, config)
+        save_pil_image(output_path / "pencil_drawing.png", pencil_result.image)
+        save_pil_image(output_path / "pen_drawing.png", pencil_result.image)
+        write_json(output_path / "analysis.json", analysis.to_dict())
+        write_json(
+            output_path / "strokes.json",
+            {
+                "analysis": analysis.to_dict(),
+                "effect": "pencil",
+                "pencil_params": pencil_result.params,
+                "stroke_count": 0,
+                "strokes": [],
+            },
+        )
+        (output_path / "analysis_report.md").write_text(_pencil_analysis_report(analysis, pencil_result.params, scale), encoding="utf-8")
+        save_gray(debug_dir / "grayscale.png", analysis.maps["grayscale"])
+        save_gray(debug_dir / "contrast_map.png", analysis.maps["contrast_map"])
+        save_gray(debug_dir / "edge_map.png", analysis.maps["edge_map"])
+        save_gray(debug_dir / "saliency_map.png", analysis.maps["saliency_map"])
+        render_pencil_debug_layers(debug_dir, pencil_result)
+        return {
+            "input": str(input_path),
+            "output_dir": str(output_path),
+            "stroke_count": 0,
+            "analysis": analysis.to_dict(),
+            "pen_drawing": str(output_path / "pen_drawing.png"),
+            "pencil_drawing": str(output_path / "pencil_drawing.png"),
+            "strokes_json": str(output_path / "strokes.json"),
+        }
+
     regions = segment_regions(image, analysis)
     detect_subject(image, analysis, regions)
     strategy = create_drawing_strategy(analysis, regions, config)
@@ -228,4 +263,39 @@ def _analysis_report(analysis, stroke_count: int, scale: float) -> str:
 - SVG：pen_drawing.svg
 - 笔触数据：strokes.json
 - 调试图：debug/
+"""
+
+
+def _pencil_analysis_report(analysis, pencil_params: dict[str, Any], scale: float) -> str:
+    tone = analysis.tone
+    structure = analysis.structure
+    return f"""# Pencil Drawing Analysis Report
+
+## 图像状态
+
+- 尺寸：{analysis.image['width']} x {analysis.image['height']}，缩放系数：{scale:.3f}
+- 平均亮度：{tone['mean_luminance']:.3f}
+- RMS 对比度：{tone['rms_contrast']:.3f}
+- 动态范围：{tone['dynamic_range']:.3f}
+- 边缘密度：{structure['edge_density']:.3f}
+- 纹理复杂度：{structure['texture_complexity']:.3f}
+
+## 铅笔画策略
+
+- 效果：铅笔画，基于方向性笔触图、色调图和程序化铅笔纹理合成。
+- 笔触核大小：{pencil_params.get('kernel_size')}
+- 笔触方向数：{pencil_params.get('num_directions')}
+- 笔触宽度：{pencil_params.get('stroke_width')}
+- 平滑方式：{pencil_params.get('smooth_kernel')}
+- 梯度方式：{pencil_params.get('gradient_method')}
+- 色调分组：{pencil_params.get('tone_group')}
+- 笔触深度：{pencil_params.get('stroke_darkness')}
+- 色调深度：{pencil_params.get('tone_darkness')}
+- 纹理强度：{pencil_params.get('texture_strength')}
+
+## 输出
+
+- PNG：pencil_drawing.png
+- 桌面预览兼容图：pen_drawing.png
+- 调试图：debug/pencil_stroke_map.png、debug/pencil_tone_map.png、debug/pencil_texture_map.png、debug/pencil_combined_map.png
 """

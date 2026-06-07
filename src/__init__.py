@@ -1,3 +1,3 @@
-"""Landscape Pen Drawing Analyzer & Renderer."""
+"""Landscape pen and pencil drawing analyzer and renderer."""
 
-__version__ = "0.4.0"
+__version__ = "0.5.0"

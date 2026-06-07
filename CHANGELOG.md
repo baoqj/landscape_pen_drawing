@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.5.0 - Pencil Drawing Effect
+
+- Added a pencil drawing renderer inspired by direction-stroke and tone-map sketch pipelines.
+- Added pencil effect selection in the CLI and desktop UI.
+- Added desktop pencil templates for balanced sketch, dark shaded sketch, and light sketch output.
+- Added pencil parameters for stroke directions, line-kernel size, stroke width, smoothing, gradient mode, tone group, tone smoothing, stroke darkness, tone darkness, texture strength, grain scale, paper grain, contrast, gamma, color preservation, and texture seed.
+- Added debug outputs for pencil stroke, tone, texture, and combined maps.
+
 ## v0.4.0 - Line Type Controls
 
 - Added line type controls for building structure lines, building facade hatching, and surrounding scenery strokes.

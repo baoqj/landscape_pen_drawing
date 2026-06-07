@@ -3,6 +3,9 @@ const DEFAULT_CONFIG = {
     max_size: 1600,
     paper_color: [248, 245, 238],
   },
+  effect: {
+    type: "pen",
+  },
   analysis: {
     use_clahe: true,
     saliency_weight: 0.35,
@@ -65,6 +68,26 @@ const DEFAULT_CONFIG = {
     max_facade_hatch_lines: 900,
     vegetation_looseness: 1.25,
   },
+  pencil: {
+    auto_kernel: true,
+    kernel_size: 8,
+    kernel_scale: 30,
+    stroke_width: 1,
+    num_directions: 8,
+    smooth_kernel: "gauss",
+    gradient_method: "sobel",
+    tone_group: 1,
+    tone_smoothing: 1.35,
+    stroke_darkness: 1.65,
+    tone_darkness: 1.25,
+    texture_strength: 0.42,
+    grain_scale: 1.0,
+    paper_grain: 0.18,
+    contrast: 1.08,
+    gamma: 1.0,
+    preserve_color: false,
+    texture_seed: 37,
+  },
   svg: {
     export: true,
     simplify_tolerance: 1.2,
@@ -76,6 +99,7 @@ const DEFAULT_CONFIG = {
 
 const PRESETS = {
   "平衡钢笔稿": {
+    "effect.type": "pen",
     "image.max_size": 1400,
     "drawing.detail_level": 0.72,
     "drawing.stroke_density": 0.78,
@@ -102,6 +126,7 @@ const PRESETS = {
     "architectural_style.entourage_line_type": "loose_curve",
   },
   "建筑细节强化": {
+    "effect.type": "pen",
     "image.max_size": 1600,
     "drawing.detail_level": 0.92,
     "drawing.stroke_density": 0.9,
@@ -129,6 +154,7 @@ const PRESETS = {
     "architectural_style.entourage_line_type": "loose_curve",
   },
   "植物速写概括": {
+    "effect.type": "pen",
     "image.max_size": 1400,
     "drawing.detail_level": 0.62,
     "drawing.stroke_density": 0.86,
@@ -155,6 +181,7 @@ const PRESETS = {
     "architectural_style.entourage_line_type": "loose_curve",
   },
   "极简留白": {
+    "effect.type": "pen",
     "image.max_size": 1200,
     "drawing.detail_level": 0.42,
     "drawing.stroke_density": 0.46,
@@ -181,6 +208,7 @@ const PRESETS = {
     "architectural_style.entourage_line_type": "broken_curve",
   },
   "浓密交叉排线": {
+    "effect.type": "pen",
     "image.max_size": 1500,
     "drawing.detail_level": 0.82,
     "drawing.stroke_density": 1.15,
@@ -207,6 +235,7 @@ const PRESETS = {
     "architectural_style.entourage_line_type": "broken_curve",
   },
   "水面与远景": {
+    "effect.type": "pen",
     "image.max_size": 1400,
     "drawing.detail_level": 0.58,
     "drawing.stroke_density": 0.62,
@@ -232,6 +261,7 @@ const PRESETS = {
     "architectural_style.entourage_line_type": "loose_curve",
   },
   "建筑延长线手绘": {
+    "effect.type": "pen",
     "image.max_size": 1600,
     "drawing.detail_level": 0.82,
     "drawing.stroke_density": 0.82,
@@ -260,6 +290,7 @@ const PRESETS = {
     "architectural_style.sketch_wobble_px": 1.45,
   },
   "现代立面网格": {
+    "effect.type": "pen",
     "image.max_size": 1600,
     "drawing.detail_level": 0.88,
     "drawing.stroke_density": 0.76,
@@ -288,6 +319,7 @@ const PRESETS = {
     "architectural_style.line_curvature_px": 1.4,
   },
   "历史建筑竖向速写": {
+    "effect.type": "pen",
     "image.max_size": 1700,
     "drawing.detail_level": 0.94,
     "drawing.stroke_density": 0.92,
@@ -314,6 +346,7 @@ const PRESETS = {
     "architectural_style.entourage_line_type": "loose_curve",
   },
   "建筑浓密阴影": {
+    "effect.type": "pen",
     "image.max_size": 1500,
     "drawing.detail_level": 0.78,
     "drawing.stroke_density": 1.16,
@@ -340,12 +373,64 @@ const PRESETS = {
     "architectural_style.entourage_line_type": "broken_curve",
     "architectural_style.broken_gap_ratio": 0.26,
   },
+  "铅笔素描": {
+    "effect.type": "pencil",
+    "image.max_size": 1400,
+    "pencil.auto_kernel": true,
+    "pencil.kernel_scale": 30,
+    "pencil.stroke_width": 1,
+    "pencil.num_directions": 8,
+    "pencil.smooth_kernel": "gauss",
+    "pencil.gradient_method": "sobel",
+    "pencil.tone_group": 1,
+    "pencil.stroke_darkness": 1.65,
+    "pencil.tone_darkness": 1.25,
+    "pencil.texture_strength": 0.42,
+    "pencil.paper_grain": 0.18,
+    "pencil.contrast": 1.08,
+    "pencil.preserve_color": false,
+  },
+  "深色铅笔阴影": {
+    "effect.type": "pencil",
+    "image.max_size": 1400,
+    "pencil.auto_kernel": true,
+    "pencil.kernel_scale": 26,
+    "pencil.stroke_width": 2,
+    "pencil.num_directions": 10,
+    "pencil.smooth_kernel": "bilateral",
+    "pencil.gradient_method": "scharr",
+    "pencil.tone_group": 2,
+    "pencil.stroke_darkness": 2.1,
+    "pencil.tone_darkness": 1.55,
+    "pencil.texture_strength": 0.58,
+    "pencil.paper_grain": 0.26,
+    "pencil.contrast": 1.18,
+    "pencil.gamma": 0.95,
+  },
+  "轻描淡写铅笔": {
+    "effect.type": "pencil",
+    "image.max_size": 1300,
+    "pencil.auto_kernel": true,
+    "pencil.kernel_scale": 34,
+    "pencil.stroke_width": 0,
+    "pencil.num_directions": 6,
+    "pencil.smooth_kernel": "gauss",
+    "pencil.gradient_method": "sobel",
+    "pencil.tone_group": 0,
+    "pencil.stroke_darkness": 1.25,
+    "pencil.tone_darkness": 0.9,
+    "pencil.texture_strength": 0.32,
+    "pencil.paper_grain": 0.14,
+    "pencil.contrast": 0.96,
+    "pencil.gamma": 1.08,
+  },
 };
 
 const PARAM_GROUPS = [
   {
     name: "图像",
     params: [
+      { path: "effect.type", label: "转换效果", type: "select", values: ["pen", "pencil"] },
       { path: "image.max_size", label: "最大边长", type: "int", min: 600, max: 2200, step: 50 },
       { path: "image.paper_color.0", label: "纸色 R", type: "int", min: 225, max: 255, step: 1 },
       { path: "image.paper_color.1", label: "纸色 G", type: "int", min: 225, max: 255, step: 1 },
@@ -387,6 +472,29 @@ const PARAM_GROUPS = [
       { path: "stroke.opacity_min", label: "最小透明度", type: "float", min: 0.05, max: 1, step: 0.01 },
       { path: "stroke.opacity_max", label: "最大透明度", type: "float", min: 0.1, max: 1, step: 0.01 },
       { path: "stroke.random_seed", label: "随机种子", type: "entry-int" },
+    ],
+  },
+  {
+    name: "铅笔画",
+    params: [
+      { path: "pencil.auto_kernel", label: "自动笔触核", type: "bool" },
+      { path: "pencil.kernel_size", label: "笔触核大小", type: "int", min: 2, max: 32, step: 1 },
+      { path: "pencil.kernel_scale", label: "自动核比例", type: "float", min: 10, max: 60, step: 1 },
+      { path: "pencil.stroke_width", label: "笔触宽度", type: "int", min: 0, max: 3, step: 1 },
+      { path: "pencil.num_directions", label: "笔触方向数", type: "int", min: 4, max: 16, step: 1 },
+      { path: "pencil.smooth_kernel", label: "平滑方式", type: "select", values: ["gauss", "median", "bilateral"] },
+      { path: "pencil.gradient_method", label: "梯度方式", type: "select", values: ["forward", "sobel", "scharr"] },
+      { path: "pencil.tone_group", label: "色调分组", type: "int", min: 0, max: 2, step: 1 },
+      { path: "pencil.tone_smoothing", label: "色调平滑", type: "float", min: 0, max: 4, step: 0.05 },
+      { path: "pencil.stroke_darkness", label: "笔触深度", type: "float", min: 0.4, max: 3.2, step: 0.01 },
+      { path: "pencil.tone_darkness", label: "阴影深度", type: "float", min: 0.4, max: 3.2, step: 0.01 },
+      { path: "pencil.texture_strength", label: "纹理强度", type: "float", min: 0, max: 1, step: 0.01 },
+      { path: "pencil.grain_scale", label: "纹理尺度", type: "float", min: 0.4, max: 3, step: 0.05 },
+      { path: "pencil.paper_grain", label: "纸面颗粒", type: "float", min: 0, max: 1, step: 0.01 },
+      { path: "pencil.contrast", label: "整体对比", type: "float", min: 0.5, max: 2, step: 0.01 },
+      { path: "pencil.gamma", label: "明暗伽马", type: "float", min: 0.4, max: 2.2, step: 0.01 },
+      { path: "pencil.preserve_color", label: "保留色彩", type: "bool" },
+      { path: "pencil.texture_seed", label: "纹理种子", type: "entry-int" },
     ],
   },
   {
@@ -505,6 +613,7 @@ function bindEvents() {
   el.applyPreset.addEventListener("click", () => applyPreset(el.presetSelect.value));
   el.resetConfig.addEventListener("click", () => {
     state.config = structuredClone(DEFAULT_CONFIG);
+    syncOutputSuffix();
     syncControlsFromConfig();
     setStatus("Config restored");
   });
@@ -655,6 +764,7 @@ function applyPreset(name) {
   for (const [path, value] of Object.entries(preset)) {
     setByPath(state.config, path, value);
   }
+  syncOutputSuffix();
   syncControlsFromConfig();
   setStatus(`Preset: ${name}`);
 }
@@ -786,6 +896,16 @@ function setByPath(object, path, value) {
   }
   const final = parts[parts.length - 1];
   current[Number.isInteger(Number(final)) ? Number(final) : final] = value;
+  if (object === state.config && path === "effect.type") {
+    syncOutputSuffix();
+  }
+}
+
+function syncOutputSuffix() {
+  const effect = getByPath(state.config, "effect.type") || "pen";
+  if (el.outputSuffix) {
+    el.outputSuffix.value = effect === "pencil" ? "pencil" : "pen";
+  }
 }
 
 function formatBytes(bytes) {

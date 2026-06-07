@@ -2,6 +2,9 @@ image:
   max_size: 1600
   paper_color: [248, 245, 238]
 
+effect:
+  type: pen
+
 analysis:
   use_clahe: true
   saliency_weight: 0.35
@@ -63,6 +66,26 @@ architectural_style:
   max_structure_lines: 360
   max_facade_hatch_lines: 900
   vegetation_looseness: 1.25
+
+pencil:
+  auto_kernel: true
+  kernel_size: 8
+  kernel_scale: 30
+  stroke_width: 1
+  num_directions: 8
+  smooth_kernel: gauss
+  gradient_method: sobel
+  tone_group: 1
+  tone_smoothing: 1.35
+  stroke_darkness: 1.65
+  tone_darkness: 1.25
+  texture_strength: 0.42
+  grain_scale: 1.0
+  paper_grain: 0.18
+  contrast: 1.08
+  gamma: 1.0
+  preserve_color: false
+  texture_seed: 37
 
 svg:
   export: true
